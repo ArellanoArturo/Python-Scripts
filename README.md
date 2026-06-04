@@ -1,8 +1,8 @@
 # Python Scripts
 
-Repositorio de scripts en Python para automatización y tareas específicas de uso puntual.
+A collection of Python scripts for automation and occasional-use tasks.
 
-Cada script es independiente y está documentado internamente con comentarios en el código.
+Each script is independent and documented internally within the code.
 
 ---
 
@@ -10,20 +10,20 @@ Cada script es independiente y está documentado internamente con comentarios en
 
 ### 🧾 word_tables_to_excel.py
 
-Convierte tablas de documentos Word (`.docx`) a Excel (`.xlsx`), preservando estructura, merges y formato básico.
+Converts tables from Word documents (`.docx`) into Excel files (`.xlsx`), preserving structure, merges, and basic formatting.
 
-- Maneja celdas fusionadas (horizontal y vertical)
-- Mantiene formato de texto y colores
-- Detecta encabezados automáticamente
-- Filtra tablas irrelevantes (de sólo texto)
-- Genera un Excel por cada archivo Word
-- Procesa lotes de archivos desde una carpeta (entrada) y los guarda en otra (salida)
+- Handles merged cells (horizontal and vertical)
+- Preserves text formatting and colors
+- Automatically detects header rows
+- Filters out irrelevant tables (text-only layouts)
+- Generates one Excel file per Word document
+- Supports batch processing from an input folder to an output folder
 
 ---
 
-## 📌 Nota
+## 📌 Note
 
-- Los scripts están pensados para ser independientes entre sí
-- Cada uno incluye documentación detallada dentro del código
+- Scripts are designed to be fully independent from each other
+- Each one includes detailed documentation inside the source code
 
 ---
