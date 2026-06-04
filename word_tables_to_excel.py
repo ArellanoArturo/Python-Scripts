@@ -1,17 +1,141 @@
 """
 word_tables_to_excel.py
------------------------
-Extrae tablas de datos de .docx y las exporta a Excel conservando:
-  - Fuente, tamaño, negrita, itálica y color de texto
-  - Fill (color de fondo) de celdas
-  - Merges horizontales y verticales
-
-Rutas de entrada/salida se guardan en config.json (misma carpeta que el script).
-Primera vez: el programa las pide. Para cambiarlas después:
-    python word_tables_to_excel.py --cambiar-rutas
-
-Uso normal:
-    python word_tables_to_excel.py
+=======================
+ 
+────────────────────────────────────────────────────────────────────
+ENGLISH
+────────────────────────────────────────────────────────────────────
+PURPOSE
+    Extracts data tables from .docx files and exports them to .xlsx,
+    preserving text formatting and cell merges. Processes entire folders
+    in batch.
+ 
+USAGE
+    Normal run:        python word_tables_to_excel.py
+    Change saved paths: python word_tables_to_excel.py --cambiar-rutas
+ 
+HOW IT WORKS
+    1. Persistent config (load_config / save_config / get_paths)
+       On first run the program asks for an input folder (.docx files)
+       and an output folder (.xlsx files) and saves both to config.json
+       next to the script. Subsequent runs load them silently.
+ 
+    2. Table filtering (is_real_table)
+       Skips tables with fewer than 2 columns or where less than 30 %
+       of cells have content — these are layout/text-container tables,
+       not data tables.
+ 
+    3. Header detection (row_is_header / detect_header_rows)
+       A row is treated as a header if the majority of its cells have a
+       colored background fill or bold text. Returns 0, 1, or 2 header
+       rows. Those rows are frozen in Excel.
+ 
+    4. Merge mapping (build_merge_map)
+       Core function. Reads <w:tc> elements directly from the XML
+       (python-docx duplicates merged cells in row.cells[], making the
+       high-level API unreliable). Extracts two merge attributes per cell:
+         - gridSpan : horizontal span (number of columns covered).
+         - vMerge   : "restart" = anchor cell; "continue" = continuation,
+                      skip writing but still advance the column counter.
+       For "restart" cells it scans subsequent rows to count how many
+       "continue" cells follow in the same column, computing row_span.
+       Produces a merge_map: a list of rows, each containing a dict per
+       cell with its text, formatting, col_span, row_span and target
+       Excel column.
+ 
+    5. Formatting (cell_dominant_run / run_color_hex / cell_shading_hex)
+       For each cell, identifies the longest text run and reads: font
+       name, size (converted from EMU to points ÷ 12700), bold, italic,
+       text color, and background fill. Color logic: explicit color is
+       used as-is; white text on a cell without a fill is forced to black
+       to avoid invisible text; cells with a colored fill but no explicit
+       text color get white text.
+ 
+    6. Document order iteration (get_doc_elements)
+       Walks the document body in order, yielding paragraphs and tables
+       as they appear. The last non-empty paragraph before each table
+       becomes the name of its Excel sheet.
+ 
+    7. Excel output (write_sheet)
+       Two-pass approach: first applies ALL merges to the worksheet, then
+       writes content and formatting. This order is required because
+       openpyxl breaks a merge range if any cell inside it is written
+       before the merge is declared. Column widths are auto-fitted and
+       header rows are frozen.
+ 
+    8. Batch processing (process_docx / main)
+       Converts every .docx in the input folder (skipping files already
+       ending in _CONVERTIDO). Each converted file is renamed with the
+       _CONVERTIDO suffix so it is not processed again on the next run.
+       A summary of successes and errors is printed at the end.
+ 
+────────────────────────────────────────────────────────────────────
+ESPAÑOL
+────────────────────────────────────────────────────────────────────
+PROPÓSITO
+    Extrae tablas de datos de archivos .docx y las exporta a .xlsx
+    conservando formato de texto y celdas combinadas. Procesa carpetas
+    completas en lote.
+ 
+USO
+    Ejecución normal:     python word_tables_to_excel.py
+    Cambiar rutas:        python word_tables_to_excel.py --cambiar-rutas
+ 
+CÓMO FUNCIONA
+    1. Configuración persistente (load_config / save_config / get_paths)
+       La primera vez pide la carpeta de entrada (.docx) y de salida
+       (.xlsx), y las guarda en config.json junto al script. Las
+       siguientes ejecuciones las cargan sin preguntar nada.
+ 
+    2. Filtrado de tablas (is_real_table)
+       Descarta tablas con menos de 2 columnas o donde menos del 30 %
+       de las celdas tienen contenido — son tablas de layout, no de datos.
+ 
+    3. Detección de encabezados (row_is_header / detect_header_rows)
+       Una fila se considera encabezado si la mayoría de sus celdas
+       tienen fondo de color o texto en negrita. Devuelve 0, 1 o 2 filas
+       de encabezado. Esas filas se congelan en Excel.
+ 
+    4. Mapa de merges (build_merge_map)
+       Función central. Lee los elementos <w:tc> directamente del XML
+       (python-docx duplica las celdas combinadas en row.cells[], lo que
+       hace poco fiable la API de alto nivel). Extrae dos atributos por
+       celda:
+         - gridSpan : expansión horizontal (número de columnas que ocupa).
+         - vMerge   : "restart" = celda ancla; "continue" = continuación,
+                      no se escribe pero sí suma al contador de columna.
+       Para celdas "restart" recorre las filas siguientes contando cuántas
+       "continue" hay en la misma columna para obtener el row_span.
+       Produce un merge_map: lista de filas, cada una con un dict por
+       celda que contiene texto, formato, col_span, row_span y columna
+       Excel destino.
+ 
+    5. Formato (cell_dominant_run / run_color_hex / cell_shading_hex)
+       Por cada celda identifica el run de texto más largo y lee: fuente,
+       tamaño (convierte de EMU a puntos ÷ 12700), negrita, itálica,
+       color de texto y fondo. Lógica de color: se usa el color explícito
+       si existe; texto blanco sin fondo se fuerza a negro para evitar
+       texto invisible; celdas con fondo pero sin color de texto reciben
+       texto blanco.
+ 
+    6. Iteración en orden del documento (get_doc_elements)
+       Recorre el cuerpo del documento en orden, entregando párrafos y
+       tablas según aparecen. El último párrafo no vacío antes de cada
+       tabla se usa como nombre de su hoja de Excel.
+ 
+    7. Escritura en Excel (write_sheet)
+       Opera en dos pasos: primero aplica TODOS los merges a la hoja y
+       después escribe el contenido y el formato. Este orden es necesario
+       porque openpyxl rompe un rango combinado si se escribe en alguna
+       de sus celdas antes de declarar el merge. Los anchos de columna
+       se ajustan automáticamente y las filas de encabezado se congelan.
+ 
+    8. Procesamiento en lote (process_docx / main)
+       Convierte todos los .docx de la carpeta de entrada (omitiendo los
+       que ya terminan en _CONVERTIDO). Cada archivo convertido se
+       renombra con el sufijo _CONVERTIDO para no reprocesarlo. Al final
+       muestra un resumen de conversiones exitosas y errores.
+────────────────────────────────────────────────────────────────────
 """
 
 import sys
