@@ -1,0 +1,30 @@
+# ── Project-specific ─────────────────────────────────────────
+Cultivos.ipynb
+sweetvy_test.py
+Climatic_Stations_Data/
+Infotec_Course/
+
+# ── Jupyter ───────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# ── Secrets / config ─────────────────────────────────────────
+.env
+.env.*
+config.json
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
