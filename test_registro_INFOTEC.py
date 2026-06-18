@@ -1,16 +1,15 @@
 """
-Pruebas Unitarias para registro_INFOTEC.py
-==========================================
-Verifica el comportamiento de FormularioUsuario ante entradas incorrectas:
-mensajes de error, contador de reintentos y valor final aceptado para
-cada campo (edad, nombre, correo). Usa unittest.mock para simular inputs
-sin intervención del usuario.
+Unit Tests - registro_INFOTEC.py
+=================================
+Tests FormularioUsuario with incorrect inputs to verify error messages,
+retry countdown, and final accepted value for each field (age, name, email).
 
-Uso:
+Usage:
     python test_registro_INFOTEC.py
+    Both files must be in the same directory.
 
-Requisitos:
-    unittest, unittest.mock (librería estándar)
+Requirements:
+    unittest, unittest.mock (standard library)
 """
 
 import unittest

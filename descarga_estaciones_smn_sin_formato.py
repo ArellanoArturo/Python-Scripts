@@ -1,13 +1,34 @@
 """
-Descarga de Normales Climatologicas Mensuales - SMN CONAGUA
-===========================================================
-Lee un CSV con IDs de estaciones, descarga el .txt de cada una
-y genera un archivo Excel por estacion con una hoja por variable.
+SMN Climatological Normals Downloader - Plain Output
+=====================================================
+Same logic as descarga_estaciones_smn.py but outputs plain Excel files with
+no styling (no colors, no column widths, no alignment). Use this when you
+only need the raw data and formatting is not required.
 
-Uso:
-    python descarga_estaciones_smn_sin_formato.py
+Each workbook has one sheet per climate variable (e.g. Temperatura Media,
+Precipitacion Total). Each sheet contains yearly data rows plus MINIMA,
+MAXIMA, MEDIA, and DESV.ST statistics at the bottom.
 
-Requisitos:
+Output filename: {station_id}_{status}_{last_year}.xlsx
+    status      OPERANDO or SUSPENDIDA — extracted from the .txt file header.
+    last_year   Last year with recorded data found in the file.
+
+Configuration (edit at the top of the script):
+    CSV_ENTRADA     Path to the CSV file with station IDs to download.
+    COLUMNA_ID      Column name holding the station IDs.
+                    Set to None to use the first column automatically.
+    ESTADO_CLAVE    State code used in the SMN URL (e.g. 'mich' for Michoacan,
+                    'jal' for Jalisco). Check the SMN site for other state codes.
+    CARPETA_SALIDA  Folder where Excel files will be saved. Created automatically
+                    if it does not exist.
+    PAUSA_SEGUNDOS  Seconds to wait between requests. Increase if you get many
+                    timeout errors.
+
+Usage:
+    1. Set CSV_ENTRADA, ESTADO_CLAVE, and CARPETA_SALIDA.
+    2. python descarga_estaciones_smn_sin_formato.py
+
+Requirements:
     pip install requests openpyxl
 """
 
@@ -19,7 +40,7 @@ import csv
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)  # SMN uses a self-signed SSL cert; this suppresses the warning printed on every request
 
 # ------------------------------------------------------------------ CONFIGURACION
 
@@ -32,12 +53,13 @@ PAUSA_SEGUNDOS = 1
 BASE_URL = (
     "https://smn.conagua.gob.mx/tools/RESOURCES/"
     "Normales_Climatologicas/Mensuales/{estado}/mes{id}.txt"
-)
+)  # {estado} and {id} are filled in at runtime via .format() inside descargar_txt
 
 COLUMNAS = ["AÑO", "ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
             "JUL", "AGO", "SEP", "OCT", "NOV", "DIC", "ACUM", "PROM", "MESES"]
 
-# Exactamente como aparecen en el archivo (UTF-8)
+# The 4 summary statistics rows at the bottom of each variable block in the .txt file
+# Must match exactly as they appear in the file (UTF-8 accented characters)
 STAT_LABELS = {"MÍNIMA", "MÁXIMA", "MEDIA", "DESV.ST"}
 
 
@@ -89,7 +111,7 @@ def parsear_bloques(texto):
     filas_actual  = []
 
     def guardar():
-        nonlocal nombre_actual, filas_actual
+        nonlocal nombre_actual, filas_actual  # nonlocal lets this inner function modify variables from the outer scope
         if nombre_actual is not None and filas_actual:
             bloques[nombre_actual] = filas_actual[:]
         nombre_actual = None
@@ -173,10 +195,10 @@ def crear_excel(station_id, bloques, situacion, ultimo_anio):
 # ------------------------------------------------------------------ DESCARGA
 
 def descargar_txt(station_id, estado, session, reintentos=4, espera=5):
-    url = BASE_URL.format(estado=estado, id=str(station_id).zfill(5))
+    url = BASE_URL.format(estado=estado, id=str(station_id).zfill(5))  # zfill pads the ID with leading zeros to 5 digits (e.g. '123' -> '00123')
     for intento in range(1, reintentos + 1):
         try:
-            r = session.get(url, timeout=30, verify=False)
+            r = session.get(url, timeout=30, verify=False)  # verify=False skips SSL cert check (needed for SMN's self-signed cert)
             if r.status_code == 200 and len(r.content) > 0:
                 return r.content.decode("utf-8")
             print(f"  X  {station_id}  ->  HTTP {r.status_code}")
@@ -184,7 +206,7 @@ def descargar_txt(station_id, estado, session, reintentos=4, espera=5):
         except requests.exceptions.Timeout:
             if intento < reintentos:
                 print(f"  !  {station_id}  ->  Timeout, reintentando ({intento}/{reintentos - 1})...")
-                time.sleep(espera * intento)
+                time.sleep(espera * intento)   # incremental backoff: waits 5s, then 10s, then 15s — gives the server more time on repeated failures
             else:
                 print(f"  X  {station_id}  ->  Timeout tras {reintentos} intentos.")
                 return None
@@ -205,13 +227,13 @@ def main():
         headers = next(reader)
         col_idx = 0 if COLUMNA_ID is None else headers.index(COLUMNA_ID)
         ids = list({row[col_idx].strip() for row in reader
-                    if row and row[col_idx].strip()})
+                    if row and row[col_idx].strip()})  # set comprehension automatically removes duplicate station IDs
     ids.sort()
     print(f"\n{len(ids)} estaciones encontradas.\n")
 
     os.makedirs(CARPETA_SALIDA, exist_ok=True)
     session = requests.Session()
-    session.headers.update({"User-Agent": "Mozilla/5.0"})
+    session.headers.update({"User-Agent": "Mozilla/5.0"})  # mimics a browser request; some servers block requests with no User-Agent
 
     ok = err = 0
 

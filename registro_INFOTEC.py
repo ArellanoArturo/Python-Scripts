@@ -1,16 +1,15 @@
 """
-Formulario de Registro con Validación OOP - Infotec
-====================================================
-Formulario de terminal que recopila y valida nombre, edad y correo de un usuario.
-Implementa un contador de intentos (máximo 4 por campo) con mensajes de error
-específicos por campo. Diseñado como clase para facilitar pruebas unitarias
-sin modificar la lógica principal.
+User Registration Form - Infotec
+=================================
+Terminal form that collects and validates name, age, and email.
+Allows up to 4 attempts per field before exiting. Built as a class
+to support unit testing without modifying core logic.
 
-Uso:
+Usage:
     python registro_INFOTEC.py
 
-Requisitos:
-    sys (librería estándar)
+Requirements:
+    sys (standard library)
 """
 
 import sys
